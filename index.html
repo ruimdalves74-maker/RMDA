@@ -1,13 +1,2181 @@
 <!doctype html>
-<html lang="en">
+<html lang="pt">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Google AI Studio App</title>
+    <title>Suporte Técnico — Agrupamento de Escolas de Carnaxide</title>
+    <!-- Recurso Externo: Google Fonts para Inter e JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    
+    <!-- Recurso Externo: Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+      tailwind.config = {
+        darkMode: 'class',
+        theme: {
+          extend: {
+            fontFamily: {
+              sans: ["Inter", "ui-sans-serif", "system-ui", "sans-serif"],
+              mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"]
+            }
+          }
+        }
+      }
+    </script>
+
+    <!-- Custom CSS Styles -->
+    <style>
+      @keyframes shake {
+        0%, 100% { transform: translateX(0); }
+        10%, 30%, 50%, 70%, 90% { transform: translateX(-4px); }
+        20%, 40%, 60%, 80% { transform: translateX(4px); }
+      }
+      .animate-shake {
+        animation: shake 0.6s ease-in-out;
+      }
+      @keyframes slide-in {
+        from { transform: translateY(1rem); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+      }
+      .animate-slide-in {
+        animation: slide-in 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+      }
+      @keyframes fade-in {
+        from { opacity: 0; }
+        to { opacity: 1; }
+      }
+      .animate-fade-in {
+        animation: fade-in 0.25s ease-out forwards;
+      }
+      
+      /* Personalização rápida do scrollbar */
+      .customize-scrollbar::-webkit-scrollbar {
+        width: 4px;
+        height: 4px;
+      }
+      .customize-scrollbar::-webkit-scrollbar-track {
+        background: transparent;
+      }
+      .customize-scrollbar::-webkit-scrollbar-thumb {
+        background: #475569;
+        border-radius: 9999px;
+      }
+      /* Tirar as setinhas padrão do select */
+      select {
+        -webkit-appearance: none;
+        -moz-appearance: none;
+        appearance: none;
+        background-image: url("data:image/svg+xml;utf8,<svg fill='gray' height='24' viewBox='0 0 24 24' width='24' xmlns='http://www.w3.org/2000/svg'><path d='M7 10l5 5 5-5z'/><path d='M0 0h24v24H0z' fill='none'/></svg>");
+        background-repeat: no-repeat;
+        background-position-x: 96%;
+        background-position-y: 52%;
+      }
+    </style>
   </head>
-  <body>
+  <body class="bg-slate-50 text-slate-800 min-h-screen">
     <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
+
+    <!-- Live Toast Area -->
+    <div id="notifications-container" class="fixed bottom-4 right-4 z-50 space-y-2 pointer-events-none max-w-sm w-full"></div>
+
+    <!-- Recurso Externo: Lucide Icons CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/lucide@0.435.0/dist/umd/lucide.min.js"></script>
+
+    <!-- CORE SYSTEM APP SCRIPT -->
+    <script>
+      // ==========================================
+      // DATABASE, STATICS & CONFIGURATIONS
+      // ==========================================
+      const SCHOOL_NAME = 'Agrupamento de Escolas de Carnaxide';
+      const DEFAULT_DOMAINS = ['ecarnaxide.pt', 'aluno.ecarnaxide.pt'];
+
+      const SCHOOLS = [
+        { id: 'esc-camilo', name: 'Escola Secundária de Camilo Castelo Branco', shortName: 'ES Camilo Castelo Branco' },
+        { id: 'esc-vieira', name: 'Escola Básica Vieira da Silva', shortName: 'EB Vieira da Silva' },
+        { id: 'esc-sylvia', name: 'Escola Básica Sylvia Philips', shortName: 'EB Sylvia Philips' },
+        { id: 'esc-antero', name: 'Escola Básica Antero Basalisa', shortName: 'EB Antero Basalisa' },
+        { id: 'esc-svento', name: 'Escola Básica de S.Bento', shortName: 'EB S.Bento' }
+      ];
+
+      const SCHOOL_SPACES = [
+        { id: 'sala-a01', name: 'Sala A01', block: 'Bloco A', floor: 'R/C', type: 'classroom' },
+        { id: 'sala-a02', name: 'Sala A02', block: 'Bloco A', floor: 'R/C', type: 'classroom' },
+        { id: 'sala-a10', name: 'Sala A10 (Informática)', block: 'Bloco A', floor: '1º Piso', type: 'lab' },
+        { id: 'sala-a11', name: 'Sala A11', block: 'Bloco A', floor: '1º Piso', type: 'classroom' },
+        { id: 'sala-a12', name: 'Sala A12', block: 'Bloco A', floor: '1º Piso', type: 'classroom' },
+        { id: 'lab-fisica', name: 'Laboratório de Física', block: 'Bloco B', floor: 'R/C', type: 'lab' },
+        { id: 'lab-quimica', name: 'Laboratório de Química', block: 'Bloco B', floor: 'R/C', type: 'lab' },
+        { id: 'biblioteca', name: 'Biblioteca Escolar', block: 'Bloco B', floor: '1º Piso', type: 'common' },
+        { id: 'sala-b12', name: 'Sala B12 (Artes)', block: 'Bloco B', floor: '1º Piso', type: 'classroom' },
+        { id: 'gabinete-direcao', name: 'Gabinete da Direção', block: 'Bloco C', floor: 'R/C', type: 'office' },
+        { id: 'secretaria', name: 'Secretaria / Serviços Administrativos', block: 'Bloco C', floor: 'R/C', type: 'office' },
+        { id: 'associacao-estudantes', name: 'Associação de Estudantes', block: 'Bloco C', floor: 'R/C', type: 'common' },
+        { id: 'sala-professores', name: 'Sala de Professores', block: 'Bloco C', floor: '1º Piso', type: 'office' },
+        { id: 'auditorio', name: 'Auditório Principal', block: 'Bloco C', floor: 'R/C', type: 'common' },
+        { id: 'pavilhao-gimnodesportivo', name: 'Pavilhão Gimnodesportivo', block: 'Desporto', floor: 'R/C', type: 'common' },
+        { id: 'bar-alunos', name: 'Bar de Alunos / Refeitório', block: 'Social', floor: 'R/C', type: 'common' }
+      ];
+
+      const CATEGORIES = [
+        {
+          value: 'computer',
+          label: 'Computador / Hardware',
+          iconName: 'laptop',
+          color: 'text-indigo-600 dark:text-indigo-400',
+          bgColor: 'bg-indigo-50 dark:bg-indigo-950/40',
+          borderColor: 'border-indigo-100 dark:border-indigo-900',
+          description: 'Problemas no computador do professor, PCs de alunos ou periféricos (ratos, teclados).'
+        },
+        {
+          value: 'projector',
+          label: 'Projetor / Ecrã',
+          iconName: 'tv',
+          color: 'text-amber-600 dark:text-amber-400',
+          bgColor: 'bg-amber-50 dark:bg-amber-950/40',
+          borderColor: 'border-amber-100 dark:border-amber-900',
+          description: 'Ecrã sem imagem, cores descalibradas, projetor não liga ou sem cabo HDMI.'
+        },
+        {
+          value: 'network',
+          label: 'Internet / Wi-Fi',
+          iconName: 'wifi',
+          color: 'text-emerald-500 dark:text-emerald-400',
+          bgColor: 'bg-emerald-50 dark:bg-emerald-950/40',
+          borderColor: 'border-emerald-100 dark:border-emerald-900',
+          description: 'Sem sinal de rede, quebras de ligação ou falhas na rede de convidados/alunos.'
+        },
+        {
+          value: 'interactive_board',
+          label: 'Quadro Interativo / Smartboard',
+          iconName: 'layers',
+          color: 'text-purple-600 dark:text-purple-400',
+          bgColor: 'bg-purple-50 dark:bg-purple-950/40',
+          borderColor: 'border-purple-100 dark:border-purple-900',
+          description: 'Calibração do toque falhou, erro de som do quadro ou desconfigurado.'
+        },
+        {
+          value: 'infrastructure',
+          label: 'Infraestrutura / Eletricidade',
+          iconName: 'lightbulb',
+          color: 'text-rose-600 dark:text-rose-400',
+          bgColor: 'bg-rose-50 dark:bg-rose-950/40',
+          borderColor: 'border-rose-100 dark:border-rose-900',
+          description: 'Tomadas sem corrente, lâmpadas fundidas, cabos elétricos expostos ou avariados.'
+        },
+        {
+          value: 'other',
+          label: 'Outras Falhas Técnicas',
+          iconName: 'help-circle',
+          color: 'text-slate-600 dark:text-slate-400',
+          bgColor: 'bg-slate-50 dark:bg-slate-950/40',
+          borderColor: 'border-slate-100 dark:border-slate-900',
+          description: 'Qualquer outra avaria ou necessidade que não se enquadre nas categorias principais.'
+        }
+      ];
+
+      const FAULT_PRESETS = [
+        {
+          id: 'p1',
+          category: 'computer',
+          title: 'PC do professor não liga',
+          description: 'O computador da secretária do professor não emite qualquer sinal de vida. As luzes da torre estão apagadas e o ecrã diz "Sem Sinal". Todos os cabos parecem ligados.',
+          urgencyDefault: 'high'
+        },
+        {
+          id: 'p2',
+          category: 'projector',
+          title: 'Projetor pisca luz vermelha e desliga-se',
+          description: 'O projetor liga durante 20 segundos com ruído elevado da ventoinha, a imagem não aparece e depois começa a piscar um LED vermelho de aviso (aparentemente sobreaquecimento ou lâmpada).',
+          urgencyDefault: 'high'
+        },
+        {
+          id: 'p3',
+          category: 'projector',
+          title: 'Ecrã do projetor encravado',
+          description: 'O comando do ecrã elétrico de projeção não responde nem para subir nem para descer. Ouve-se um pequeno estalido na caixa mas o ecrã permanece preso.',
+          urgencyDefault: 'normal'
+        },
+        {
+          id: 'p4',
+          category: 'network',
+          title: 'Sem acesso à Internet (Wi-Fi e Cabo)',
+          description: 'Os computadores da sala exibem o ícone de aviso de falta de internet. Reiniciámos o browser e as máquinas, mas continuamos sem ligação à rede interna ou exterior.',
+          urgencyDefault: 'high'
+        },
+        {
+          id: 'p5',
+          category: 'interactive_board',
+          title: 'Descalibração do Quadro Interativo',
+          description: 'Ao pressionar a caneta digital de calibração, o toque regista-se cerca de 10 centímetros de desvio para o lado esquerdo, tornando impossível desenhar ou controlar os botões.',
+          urgencyDefault: 'normal'
+        },
+        {
+          id: 'p6',
+          category: 'infrastructure',
+          title: 'Tomadas elétricas da mesa de teste sem energia',
+          description: 'As tomadas triplas ao longo do balcão de experiências de laboratório não ligam nenhum aparelho. Suspeita-se que o disjuntor do painel elétrico da sala tenha disparado.',
+          urgencyDefault: 'normal'
+        },
+        {
+          id: 'p7',
+          category: 'computer',
+          title: 'Teclado ou rato inoperante no PC nº 12',
+          description: 'O rato do computador nº 12 dos alunos (ao fundo da sala) está com a luz ótica apagada e o computador não o reconhece, mesmo trocando de porta USB.',
+          urgencyDefault: 'normal'
+        },
+        {
+          id: 'p8',
+          category: 'other',
+          title: 'Cabo HDMI em falta ou danificado na mesa',
+          description: 'O cabo HDMI que liga o portátil pessoal do professor ao sistema da sala não se encontra no local, ou a ficha está visivelmente amolgada impossibilitando a ligação.',
+          urgencyDefault: 'high'
+        }
+      ];
+
+      const INITIAL_TICKETS = [
+        {
+          id: 'TKT-2490',
+          title: 'Projetor pisca luz vermelha (Sobreaquecimento)',
+          description: 'O projetor do teto liga por breves instantes, mas a ventoinha emite um barulho incomum e desliga-se num minuto exibindo luz vermelha de erro.',
+          location: 'Sala A11',
+          schoolId: 'esc-camilo',
+          category: 'projector',
+          urgency: 'high',
+          status: 'pending',
+          reportedBy: 'antonio.sousa@ecarnaxide.pt',
+          reporterName: 'Prof. António Sousa',
+          reportedRole: 'teacher',
+          createdAt: new Date(Date.now() - 3600000 * 2).toISOString(),
+          updatedAt: null,
+          assignedTo: null,
+          technicalNotes: null
+        },
+        {
+          id: 'TKT-2485',
+          title: 'Falta de ligação Wi-Fi no canto direito',
+          description: 'Estudantes que se sentam nas últimas filas (perto das janelas) não conseguem aceder à rede Wi-Fi institucional de forma estável. A ligação cai constantemente.',
+          location: 'Biblioteca Escolar',
+          schoolId: 'esc-vieira',
+          category: 'network',
+          urgency: 'normal',
+          status: 'in_progress',
+          reportedBy: 'beatriz.silva@aluno.ecarnaxide.pt',
+          reporterName: 'Beatriz Silva (11ºA)',
+          reportedRole: 'student',
+          createdAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+          updatedAt: new Date(Date.now() - 3600000 * 20).toISOString(),
+          assignedTo: 'Carlos Mendes (Suporte)',
+          technicalNotes: 'Efetuada análise no local. O ponto de acesso (AP-04) está funcional mas com forte atenuação. Estamos a planear reposicionar o repetidor ou testar com outro canal.'
+        },
+        {
+          id: 'TKT-2480',
+          title: 'Tomadas do balcão de química sem corrente',
+          description: 'Estávamos a preparar uma experiência com marqueses elétricas e verificámos que a corrente não chega aos postos frontais de testes práticas.',
+          location: 'Laboratório de Química',
+          schoolId: 'esc-sylvia',
+          category: 'infrastructure',
+          urgency: 'high',
+          status: 'in_progress',
+          reportedBy: 'mario.rocha@ecarnaxide.pt',
+          reporterName: 'Prof. Mário Rocha',
+          reportedRole: 'teacher',
+          createdAt: new Date(Date.now() - 3600000 * 18).toISOString(),
+          updatedAt: new Date(Date.now() - 3600000 * 15).toISOString(),
+          assignedTo: 'Sofia Santos (Manutenção)',
+          technicalNotes: 'Não se trata de avaria mecânica. O botão de paragem de emergência (corte global) estava pressionado a fundo. Desbloqueou-se mas vamos rever o disjuntor do quadro parcial porque saltou duas vezes depois.'
+        },
+        {
+          id: 'TKT-2475',
+          title: 'Substituição recomendada de Teclado PC nº 5',
+          description: 'As teclas "E", "O" e a barra de espaço estão encravadas ou não funcionam no terminal nº 5 dos computadores dos alunos de informática.',
+          location: 'Sala A10 (Informática)',
+          schoolId: 'esc-camilo',
+          category: 'computer',
+          urgency: 'normal',
+          status: 'resolved',
+          reportedBy: 'rui.costa@aluno.ecarnaxide.pt',
+          reporterName: 'Rui Costa (12ºB)',
+          reportedRole: 'student',
+          createdAt: new Date(Date.now() - 3600000 * 48).toISOString(),
+          updatedAt: new Date(Date.now() - 3600000 * 44).toISOString(),
+          assignedTo: 'Carlos Mendes (Suporte)',
+          technicalNotes: 'Teclado antigo de membrana substituído por um teclado USB de substituição novo do stock geral. Testado com sucesso no Windows.'
+        }
+      ];
+
+      // ==========================================
+      // LIVE STATE MANAGEMENT & LOCAL STORAGE
+      // ==========================================
+      const state = {
+        session: null,
+        tickets: [],
+        activityLogs: [],
+        showForm: false,
+        searchQuery: '',
+        statusFilter: 'all',
+        categoryFilter: 'all',
+        scopeFilter: 'all',
+        schoolFilter: 'all',
+        notifications: [],
+        
+        // Interactive states
+        expandedTickets: {},
+        showNotesForm: {},
+        techNotesForm: {},
+        confirmAction: null,
+        
+        // Form creation state
+        form: {
+          schoolId: 'esc-camilo',
+          location: '',
+          category: 'computer',
+          urgency: 'normal',
+          title: '',
+          description: '',
+          errorStatus: ''
+        }
+      };
+
+      // Load or Initialize States in local storage
+      function initAppState() {
+        // Tickets
+        const localTickets = localStorage.getItem('escola_tickets');
+        if (localTickets) {
+          try {
+            state.tickets = JSON.parse(localTickets);
+          } catch {
+            state.tickets = JSON.parse(JSON.stringify(INITIAL_TICKETS));
+          }
+        } else {
+          state.tickets = JSON.parse(JSON.stringify(INITIAL_TICKETS));
+          localStorage.setItem('escola_tickets', JSON.stringify(state.tickets));
+        }
+
+        // Activity Logs
+        const localLogs = localStorage.getItem('escola_logs');
+        if (localLogs) {
+          try {
+            state.activityLogs = JSON.parse(localLogs);
+          } catch {
+            state.activityLogs = getDefaultLogs();
+          }
+        } else {
+          state.activityLogs = getDefaultLogs();
+          localStorage.setItem('escola_logs', JSON.stringify(state.activityLogs));
+        }
+
+        // Active Sign-in Session
+        const localSession = localStorage.getItem('escola_session');
+        if (localSession) {
+          try {
+            state.session = JSON.parse(localSession);
+          } catch {
+            state.session = null;
+          }
+        }
+      }
+
+      function getDefaultLogs() {
+        return [
+          {
+            id: 'log-1',
+            ticketId: 'TKT-2475',
+            ticketTitle: 'Substituição recomendada de Teclado PC nº 5',
+            action: 'marcado como Resolvido',
+            user: 'Carlos Mendes',
+            role: 'technician',
+            timestamp: new Date(Date.now() - 3600000 * 44).toISOString()
+          },
+          {
+            id: 'log-2',
+            ticketId: 'TKT-2480',
+            ticketTitle: 'Tomadas do balcão de química sem corrente',
+            action: 'iniciou intervenção',
+            user: 'Sofia Santos',
+            role: 'technician',
+            timestamp: new Date(Date.now() - 3600000 * 15).toISOString()
+          }
+        ];
+      }
+
+      function syncTicketsState() {
+        localStorage.setItem('escola_tickets', JSON.stringify(state.tickets));
+      }
+
+      function syncSessionState() {
+        if (state.session) {
+          localStorage.setItem('escola_session', JSON.stringify(state.session));
+        } else {
+          localStorage.removeItem('escola_session');
+        }
+      }
+
+      function addActivityLog(ticketId, ticketTitle, action, userName, userRole) {
+        const newLog = {
+          id: `log-${Date.now()}`,
+          ticketId,
+          ticketTitle,
+          action,
+          user: userName,
+          role: userRole,
+          timestamp: new Date().toISOString()
+        };
+        state.activityLogs = [newLog, ...state.activityLogs].slice(0, 20);
+        localStorage.setItem('escola_logs', JSON.stringify(state.activityLogs));
+
+        // Trigger UI System Notification (Toast)
+        const rolePt = userRole === 'teacher' ? 'Prof.' : userRole === 'student' ? 'Estudante' : 'Suporte';
+        const notifMsg = `[${rolePt}] ${userName}: ${action} no caso ${ticketId} ("${ticketTitle}")`;
+        
+        state.notifications.push({ id: Date.now(), message: notifMsg });
+        renderNotifications();
+      }
+
+      // ==========================================
+      // MAIN REACTIVE INTERNALS RENDERING LOOP
+      // ==========================================
+      function render() {
+        const root = document.getElementById('root');
+        
+        if (!state.session) {
+          root.innerHTML = renderLogin();
+          // Reset form errors on switch
+          document.getElementById('email-input')?.focus();
+        } else if (state.showForm) {
+          root.innerHTML = `
+            <div class="min-h-screen bg-slate-50 font-sans flex flex-col text-slate-800">
+              ${renderHeader()}
+              <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6 overflow-hidden">
+                ${renderNewTicketForm()}
+              </main>
+              ${renderFooter()}
+            </div>
+          `;
+        } else {
+          root.innerHTML = `
+            <div class="min-h-screen bg-slate-50 font-sans flex flex-col text-slate-800">
+              ${renderHeader()}
+              <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col gap-6 overflow-hidden">
+                ${renderMobileProfileSimulator()}
+                ${renderStatsDashboard()}
+                
+                <!-- BOARD GRID -->
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 flex-1 items-start">
+                  <!-- LEFT COLUMN: FILTERS & CARDS -->
+                  <div class="lg:col-span-3 space-y-4">
+                    ${renderFiltersPanel()}
+                    ${renderTicketsList()}
+                  </div>
+                  
+                  <!-- RIGHT COLUMN: ACTIVITY TIMELINE LOG -->
+                  <div class="space-y-4">
+                    ${renderActivityTimeline()}
+                    ${renderSystemInfoBox()}
+                  </div>
+                </div>
+              </main>
+              ${renderFooter()}
+            </div>
+          `;
+        }
+
+        // Render confirm dialog if any
+        if (state.confirmAction) {
+          const m = document.createElement('div');
+          m.innerHTML = renderConfirmationModal();
+          document.body.appendChild(m.firstElementChild);
+        }
+
+        // Hydrate Lucide graphics after DOM writing
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      }
+
+      // ==========================================
+      // COMPONENT 1: COMPACT VECTOR LOGO
+      // ==========================================
+      function renderSchoolLogo(height = 44, isDark = false, iconOnly = false) {
+        return `
+          <div class="flex items-center gap-3 select-none" style="height: ${height}px">
+            <svg viewBox="0 0 160 260" class="h-full w-auto shrink-0" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <path d="M 16,250 L 16,175 H 26 C 36,145 48,125 56,115 H 51 V 110 H 56 V 49 H 51 V 44 L 80,26 L 109,44 V 49 H 104 V 110 H 109 V 115 H 104 C 112,125 124,145 134,175 H 144 V 250 Z" fill="#8e8e8e" stroke="#1e293b" stroke-width="6" stroke-linecap="round" stroke-linejoin="round" />
+              <path d="M 13,250 H 147" stroke="#1e293b" stroke-width="6" stroke-linecap="round" />
+              <path d="M 79.5,26 V 20 H 80.5 V 26 Z" fill="#1e293b" />
+              <path d="M 80,8 C 83.5,13 83.5,15 80,20 C 76.5,15 76.5,13 80,8 Z" fill="#1e293b" stroke="#1e293b" stroke-width="2" stroke-linejoin="round" />
+              <path d="M 80,8 V 2" stroke="#1e293b" stroke-width="4.5" stroke-linecap="round" />
+            </svg>
+            ${!iconOnly ? `
+              <div class="flex flex-col justify-center leading-none">
+                <span class="font-sans font-extrabold tracking-tight text-[#1ba68f]" style="font-size: ${height * 0.46}px; line-height: 1">
+                  Carnaxide
+                </span>
+                <span class="font-sans font-light tracking-[0.16em] -mt-0.5 ${isDark ? 'text-slate-300' : 'text-slate-800'}" style="font-size: ${height * 0.17}px; line-height: 1.25; font-weight: 300">
+                  Agrupamento de Escolas
+                </span>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      // ==========================================
+      // COMPONENT 2: THE WELCOME SIGN-IN SCREEN
+      // ==========================================
+      function renderLogin() {
+        const errorHtml = state.form.errorStatus ? `
+          <div class="rounded-xl bg-rose-50 p-4 border border-rose-100 animate-shake mb-4">
+            <div class="flex">
+              <i data-lucide="alert-circle" class="h-5 w-5 text-rose-500 shrink-0"></i>
+              <div class="ml-3">
+                <p id="login-error-text" class="text-sm font-medium text-rose-800">${state.form.errorStatus}</p>
+              </div>
+            </div>
+          </div>
+        ` : '';
+
+        return `
+          <div class="min-h-screen bg-slate-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8 font-sans">
+            <div class="sm:mx-auto sm:w-full sm:max-w-md">
+              <div class="flex justify-center">
+                ${renderSchoolLogo(84)}
+              </div>
+              <h2 class="mt-6 text-center text-3xl font-bold tracking-tight text-slate-950">
+                Suporte Técnico
+              </h2>
+              <p class="mt-2 text-center text-sm text-slate-400 max-w-sm mx-auto">
+                <span class="inline-flex items-center gap-1 mt-1 font-medium text-xs bg-indigo-50 text-indigo-700 px-2.5 py-0.5 rounded-full border border-indigo-100">
+                  Circuito Fechado
+                </span>
+              </p>
+            </div>
+
+            <div class="mt-8 sm:mx-auto sm:w-full sm:max-w-md px-4 sm:px-0">
+              <div class="bg-white py-8 px-6 shadow-xl rounded-2xl border border-slate-100">
+                ${errorHtml}
+                
+                <form class="space-y-5" onsubmit="window.handleLoginSubmit(event)">
+                  <div>
+                    <label for="email-input" class="block text-sm font-medium text-slate-700">
+                      Email Institucional
+                    </label>
+                    <div class="mt-1.5 relative rounded-lg shadow-sm">
+                      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i data-lucide="mail" class="w-4 h-4"></i>
+                      </div>
+                      <input
+                        id="email-input"
+                        name="email"
+                        type="email"
+                        required
+                        value="${state.form.title}"
+                        placeholder="ex: nome@ecarnaxide.pt ou @aluno.ecarnaxide.pt"
+                        class="block w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl text-slate-900 placeholder:text-slate-400 text-sm transition-all outline-none"
+                      />
+                    </div>
+                    <p class="mt-1.5 text-xs text-slate-400">
+                      O domínio identifica automaticamente se é Professor ou Aluno.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label for="name-input" class="block text-sm font-medium text-slate-700">
+                      Nome (Opcional)
+                    </label>
+                    <div class="mt-1.5 relative rounded-lg shadow-sm">
+                      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i data-lucide="user" class="w-4 h-4"></i>
+                      </div>
+                      <input
+                        id="name-input"
+                        name="name"
+                        type="text"
+                        placeholder="Seu Nome Completo"
+                        class="block w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl text-slate-900 placeholder:text-slate-400 text-sm transition-all outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label for="password-input" class="block text-sm font-medium text-slate-700">
+                      Palavra-passe (Simulada)
+                    </label>
+                    <div class="mt-1.5 relative rounded-lg shadow-sm">
+                      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i data-lucide="shield-check" class="w-4 h-4"></i>
+                      </div>
+                      <input
+                        id="password-input"
+                        name="password"
+                        type="password"
+                        placeholder="••••••••"
+                        class="block w-full pl-10 pr-3 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl text-slate-900 placeholder:text-slate-400 text-sm transition-all outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <button
+                      type="submit"
+                      id="login-submit-button"
+                      class="w-full flex justify-center items-center gap-2 py-2.5 px-4 border border-transparent rounded-xl shadow-sm text-sm font-semibold text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition-colors duration-150"
+                    >
+                      Entrar com Email Institucional
+                      <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                    </button>
+                  </div>
+                </form>
+
+                <!-- Divider -->
+                <div class="mt-6 relative">
+                  <div class="absolute inset-0 flex items-center" aria-hidden="true">
+                    <div class="w-full border-t border-slate-100"></div>
+                  </div>
+                  <div class="relative flex justify-center text-xs">
+                    <span class="bg-white px-3 font-semibold text-slate-400 uppercase tracking-widest text-[10px]">
+                      Acesso Rápido de Demo
+                    </span>
+                  </div>
+                </div>
+
+                <!-- Fast Demo Profiles -->
+                <div class="mt-5 space-y-2.5">
+                  <button
+                    type="button"
+                    id="quick-login-teacher"
+                    onclick="window.handleQuickLogin('margarida.sousa@ecarnaxide.pt', 'Prof.ª Margarida Sousa', 'teacher')"
+                    class="w-full text-left p-3 rounded-xl border border-dashed border-slate-200 hover:border-indigo-300 hover:bg-slate-50 transition-all flex items-center justify-between"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="p-1.5 bg-blue-50 text-blue-600 rounded-lg text-sm font-bold">👨‍🏫</div>
+                      <div>
+                        <div class="text-xs font-semibold text-slate-900">Prof.ª Margarida Sousa</div>
+                        <div class="text-[10px] text-slate-400">margarida.sousa@ecarnaxide.pt</div>
+                      </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded bg-blue-100 text-blue-800 text-[10px] font-bold uppercase">PROFESSORA</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    id="quick-login-student"
+                    onclick="window.handleQuickLogin('tiago.ribeiro@aluno.ecarnaxide.pt', 'Tiago Ribeiro (10ºB)', 'student')"
+                    class="w-full text-left p-3 rounded-xl border border-dashed border-slate-200 hover:border-emerald-300 hover:bg-slate-50 transition-all flex items-center justify-between"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg text-sm font-bold">🎒</div>
+                      <div>
+                        <div class="text-xs font-semibold text-slate-900">Tiago Ribeiro (10ºB)</div>
+                        <div class="text-[10px] text-slate-400">tiago.ribeiro@aluno.ecarnaxide.pt</div>
+                      </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded bg-emerald-100 text-emerald-800 text-[10px] font-bold uppercase">ALUNO</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    id="quick-login-tech"
+                    onclick="window.handleQuickLogin('tecnico@ecarnaxide.pt', 'Carlos Mendes (TI)', 'technician')"
+                    class="w-full text-left p-3 rounded-xl border border-dashed border-slate-200 hover:border-amber-300 hover:bg-slate-50 transition-all flex items-center justify-between"
+                  >
+                    <div class="flex items-center gap-3">
+                      <div class="p-1.5 bg-amber-50 text-amber-600 rounded-lg text-sm font-bold">🛠️</div>
+                      <div>
+                        <div class="text-xs font-semibold text-slate-900">Carlos Mendes (Suporte)</div>
+                        <div class="text-[10px] text-slate-400 font-mono">tecnico@ecarnaxide.pt</div>
+                      </div>
+                    </div>
+                    <span class="px-2 py-0.5 rounded bg-amber-100 text-amber-800 text-[10px] font-bold uppercase">TÉCNICO (TI)</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mt-8 text-center text-xs text-slate-400 max-w-sm mx-auto px-4 leading-relaxed">
+              <i data-lucide="sparkles" class="inline w-3.5 h-3.5 text-amber-500 mr-0.5 pb-0.5"></i>
+              Sistema interno escolar de resposta a falhas. Os relatórios são enviados automaticamente ao departamento de TI.
+            </div>
+          </div>
+        `;
+      }
+
+      // ==========================================
+      // COMPONENT 3: APP HEADER & USER BAR
+      // ==========================================
+      function renderHeader() {
+        const activeRole = state.session.role;
+        return `
+          <header class="bg-slate-900 text-white border-b border-slate-800 shrink-0 select-none">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+              <div class="flex items-center justify-between h-16">
+                <!-- Branding Left -->
+                <div class="flex items-center">
+                  ${renderSchoolLogo(42, true)}
+                </div>
+
+                <!-- Simulator widget (desktop only) -->
+                <div class="hidden md:flex items-center gap-1.5 bg-slate-800 border border-slate-700/60 p-1 rounded-xl">
+                  <span class="text-[10px] font-bold text-slate-400 px-2 uppercase tracking-wide">
+                    Simulador de Perfil:
+                  </span>
+                  <button
+                    type="button"
+                    onclick="window.handleDemoSwitchRole('teacher')"
+                    class="px-2.5 py-1 text-xs rounded-lg font-bold transition-all ${
+                      activeRole === 'teacher' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                    }"
+                  >
+                    👨‍🏫 Professor
+                  </button>
+                  <button
+                    type="button"
+                    onclick="window.handleDemoSwitchRole('student')"
+                    class="px-2.5 py-1 text-xs rounded-lg font-bold transition-all ${
+                      activeRole === 'student' ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                    }"
+                  >
+                    🎒 Aluno
+                  </button>
+                  <button
+                    type="button"
+                    onclick="window.handleDemoSwitchRole('technician')"
+                    class="px-2.5 py-1 text-xs rounded-lg font-bold transition-all ${
+                      activeRole === 'technician' ? 'bg-amber-600 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                    }"
+                  >
+                    🛠️ Técnico
+                  </button>
+                </div>
+
+                <!-- Right Side Info -->
+                <div class="flex items-center gap-3">
+                  <div class="text-right hidden sm:block">
+                    <div class="text-xs font-bold leading-none">${state.session.name}</div>
+                    <div class="text-[10px] text-slate-400 font-mono mt-1">${state.session.email}</div>
+                  </div>
+                  
+                  <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs ${
+                    activeRole === 'technician' ? 'bg-amber-500 text-slate-950' :
+                    activeRole === 'teacher' ? 'bg-indigo-500 text-white' : 'bg-emerald-500 text-white'
+                  }">
+                    ${activeRole === 'technician' ? 'T' : activeRole === 'teacher' ? 'P' : 'A'}
+                  </div>
+
+                  <button
+                    type="button"
+                    id="header-logout-btn"
+                    onclick="window.handleLogout()"
+                    title="Terminar Sessão"
+                    class="p-1.5 text-slate-400 hover:text-white hover:bg-slate-800 rounded-lg transition-colors border border-transparent hover:border-slate-700"
+                  >
+                    <i data-lucide="log-out" class="w-4 h-4"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </header>
+        `;
+      }
+
+      function renderMobileProfileSimulator() {
+        return `
+          <div class="md:hidden bg-slate-100 p-2.5 rounded-xl flex items-center justify-between text-xs font-semibold gap-1.5 border border-slate-200">
+            <span class="text-slate-500">Perfil Ativo:</span>
+            <div class="flex gap-1.5">
+              <button
+                onclick="window.handleDemoSwitchRole('teacher')"
+                class="px-2 py-0.5 rounded text-[10px] font-bold ${state.session.role === 'teacher' ? 'bg-indigo-600 text-white' : 'bg-white text-slate-700 border border-slate-200'}"
+              >Prof</button>
+              <button
+                onclick="window.handleDemoSwitchRole('student')"
+                class="px-2 py-0.5 rounded text-[10px] font-bold ${state.session.role === 'student' ? 'bg-emerald-600 text-white' : 'bg-white text-slate-700 border border-slate-200'}"
+              >Aluno</button>
+              <button
+                onclick="window.handleDemoSwitchRole('technician')"
+                class="px-2 py-0.5 rounded text-[10px] font-bold ${state.session.role === 'technician' ? 'bg-amber-600 text-white' : 'bg-white text-slate-700 border border-slate-200'}"
+              >Téc</button>
+            </div>
+          </div>
+        `;
+      }
+
+      // ==========================================
+      // COMPONENT 4: ANALYTICS STATS & BENTO GRID
+      // ==========================================
+      function renderStatsDashboard() {
+        const total = state.tickets.length;
+        const pending = state.tickets.filter(t => t.status === 'pending').length;
+        const inProgress = state.tickets.filter(t => t.status === 'in_progress').length;
+        const resolved = state.tickets.filter(t => t.status === 'resolved').length;
+        const highUrgency = state.tickets.filter(t => t.urgency === 'high' && t.status !== 'resolved').length;
+
+        // Statistics computation: Categories
+        const catStats = CATEGORIES.map(cat => {
+          const count = state.tickets.filter(t => t.category === cat.value).length;
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+          return { ...cat, count, pct };
+        }).sort((a, b) => b.count - a.count);
+
+        // Statistics computation: Schools
+        const schoolStats = SCHOOLS.map(sc => {
+          const count = state.tickets.filter(t => t.schoolId === sc.id).length;
+          const pct = total > 0 ? Math.round((count / total) * 100) : 0;
+          return { ...sc, count, pct };
+        }).sort((a, b) => b.count - a.count);
+
+        // Statistics computation: Spaces (Top 3 rooms)
+        const roomMap = {};
+        state.tickets.forEach(t => {
+          roomMap[t.location] = (roomMap[t.location] || 0) + 1;
+        });
+        const topRooms = Object.entries(roomMap)
+          .map(([name, count]) => ({ name, count }))
+          .sort((a, b) => b.count - a.count)
+          .slice(0, 3);
+
+        return `
+          <div class="space-y-6">
+            <!-- Summary cards -->
+            <div class="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <!-- Item 1: Total -->
+              <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div class="p-3 bg-slate-50 text-slate-600 rounded-xl">
+                  <i data-lucide="bar-chart-3" class="w-[22px] h-[22px]"></i>
+                </div>
+                <div>
+                  <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">Total de Casos</p>
+                  <h4 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-0.5">${total}</h4>
+                </div>
+              </div>
+
+              <!-- Item 2: Pending -->
+              <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div class="p-3 bg-amber-50 text-amber-600 rounded-xl">
+                  <i data-lucide="clock" class="w-[22px] h-[22px]"></i>
+                </div>
+                <div>
+                  <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">Pendentes</p>
+                  <h4 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-0.5 flex items-center gap-1.5 flex-wrap">
+                    <span>${pending}</span>
+                    ${highUrgency > 0 ? `<span class="text-[10px] font-bold text-rose-600 bg-rose-50 px-1.5 py-0.5 rounded-md">${highUrgency} Alta</span>` : ''}
+                  </h4>
+                </div>
+              </div>
+
+              <!-- Item 3: In Progress -->
+              <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div class="p-3 bg-indigo-50 text-indigo-600 rounded-xl">
+                  <i data-lucide="play" class="w-[22px] h-[22px]"></i>
+                </div>
+                <div>
+                  <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">A Resolver</p>
+                  <h4 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-0.5">${inProgress}</h4>
+                </div>
+              </div>
+
+              <!-- Item 4: Resolved -->
+              <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-4">
+                <div class="p-3 bg-emerald-50 text-emerald-600 rounded-xl">
+                  <i data-lucide="check-circle" class="w-[22px] h-[22px]"></i>
+                </div>
+                <div>
+                  <p class="text-[10px] sm:text-xs font-semibold text-slate-400 uppercase tracking-wider">Resolvidos</p>
+                  <h4 class="text-xl sm:text-2xl font-extrabold text-slate-900 mt-0.5 flex items-center gap-1.5">
+                    <span>${resolved}</span>
+                    ${total > 0 ? `<span class="text-[10px] text-emerald-600 font-bold bg-emerald-50 px-1 rounded">(${Math.round((resolved / total) * 100)}%)</span>` : ''}
+                  </h4>
+                </div>
+              </div>
+            </div>
+
+            <!-- Bento grids analysis layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <!-- Grid Block 1: Categories -->
+              <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 class="text-xs sm:text-sm font-bold text-slate-900 flex items-center justify-between mb-4">
+                  <span>Incidências por Tipo</span>
+                  <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Frequência global</span>
+                </h3>
+                <div class="space-y-3.5">
+                  ${catStats.map(stat => {
+                    let catColor = '#4f46e5';
+                    if (stat.value === 'projector') catColor = '#d97706';
+                    else if (stat.value === 'network') catColor = '#10b981';
+                    else if (stat.value === 'interactive_board') catColor = '#8b5cf6';
+                    else if (stat.value === 'infrastructure') catColor = '#e11d48';
+                    else if (stat.value === 'other') catColor = '#475569';
+
+                    return `
+                      <div class="space-y-1">
+                        <div class="flex justify-between items-center text-xs">
+                          <span class="font-semibold text-slate-600">${stat.label}</span>
+                          <span class="font-mono font-bold text-slate-900">
+                            ${stat.count} ${stat.count === 1 ? 'pedido' : 'pedidos'} (${stat.pct}%)
+                          </span>
+                        </div>
+                        <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                          <div class="h-2 rounded-full transition-all duration-500" style="width: ${stat.count > 0 ? stat.pct : 2}%; background-color: ${catColor}"></div>
+                        </div>
+                      </div>
+                    `;
+                  }).join('')}
+                </div>
+              </div>
+
+              <!-- Grid Block 2: Schools -->
+              <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+                <h3 class="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2 mb-4">
+                  <i data-lucide="school" class="w-4 h-4 text-indigo-600"></i>
+                  <span>Pedidos por Unidade Escolar</span>
+                </h3>
+                <div class="space-y-3.5">
+                  ${schoolStats.map(stat => `
+                    <div class="space-y-1">
+                      <div class="flex justify-between items-center text-xs">
+                        <span class="font-semibold text-slate-600 truncate max-w-[170px]" title="${stat.name}">${stat.shortName}</span>
+                        <span class="font-mono font-bold text-slate-900 shrink-0">
+                          ${stat.count} ${stat.count === 1 ? 'pedido' : 'pedidos'} (${stat.pct}%)
+                        </span>
+                      </div>
+                      <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden">
+                        <div class="h-2 rounded-full bg-indigo-600 transition-all duration-500" style="width: ${stat.count > 0 ? stat.pct : 1}%"></div>
+                      </div>
+                    </div>
+                  `).join('')}
+                </div>
+              </div>
+
+              <!-- Grid Block 3: Critial Hot Spots -->
+              <div class="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-between">
+                <div>
+                  <h3 class="text-xs sm:text-sm font-bold text-slate-900 flex items-center gap-2 mb-4">
+                    <i data-lucide="map-pin" class="w-4 h-4 text-rose-500"></i>
+                    <span>Espaços Críticos</span>
+                  </h3>
+                  
+                  ${topRooms.length > 0 ? `
+                    <div class="space-y-3">
+                      ${topRooms.map((room, index) => `
+                        <div class="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100">
+                          <div class="flex items-center gap-3">
+                            <span class="text-xs font-black min-w-[20px] text-center ${
+                              index === 0 ? 'text-rose-600' : index === 1 ? 'text-amber-600' : 'text-slate-500'
+                            }">#${index + 1}</span>
+                            <span class="text-xs font-semibold text-slate-800">${room.name}</span>
+                          </div>
+                          <span class="text-[10px] uppercase tracking-wider font-bold bg-slate-200/50 text-slate-700 px-2 py-0.5 rounded-md">
+                            ${room.count} ${room.count === 1 ? 'Incidência' : 'Incidências'}
+                          </span>
+                        </div>
+                      `).join('')}
+                    </div>
+                  ` : `
+                    <div class="flex flex-col items-center justify-center py-6 text-center text-slate-400">
+                      <i data-lucide="sparkles" class="w-6 h-6 text-slate-300 stroke-[1.5] mb-2"></i>
+                      <p class="text-xs font-medium">Sem dados suficientes registados.</p>
+                    </div>
+                  `}
+                </div>
+
+                <div class="mt-4 pt-3 border-t border-slate-100 text-[11px] text-slate-400 leading-normal select-none">
+                  ${state.session.role === 'technician' ? `
+                    <span class="text-amber-600 font-bold bg-amber-50/70 border border-amber-100 px-2 py-1 rounded block text-center">
+                      🛠️ Vista de Diagnóstico Operacional Ativa
+                    </span>
+                  ` : `
+                    <span>Os dados refletem o histórico local recente de pedidos reportados pelas salas.</span>
+                  `}
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // ==========================================
+      // COMPONENT 5: ACTION FILTERS CONTROL BOARD
+      // ==========================================
+      function renderFiltersPanel() {
+        const totalCount = state.tickets.length;
+        const pendingCount = state.tickets.filter(t => t.status === 'pending').length;
+        const processCount = state.tickets.filter(t => t.status === 'in_progress').length;
+        const solvedCount = state.tickets.filter(t => t.status === 'resolved').length;
+        const userCountMe = state.tickets.filter(t => t.reportedBy === state.session.email).length;
+
+        return `
+          <div class="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm space-y-3.5">
+            <div class="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center justify-between">
+              <!-- Search bar -->
+              <div class="relative flex-1">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                  <i data-lucide="search" class="w-4 h-4"></i>
+                </div>
+                <input
+                  type="text"
+                  placeholder="Pesquisar por Sala, Categoria, Relator ou ID..."
+                  value="${state.searchQuery}"
+                  oninput="window.handleSearchInput(this.value)"
+                  class="block w-full pl-9 pr-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl text-slate-900 placeholder:text-slate-400 text-xs transition-all outline-none"
+                />
+              </div>
+
+              <!-- Create ticket Trigger button -->
+              ${state.session.role !== 'technician' ? `
+                <button
+                  type="button"
+                  id="create-new-ticket-trigger"
+                  onclick="window.handleShowForm(true)"
+                  class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-xs font-bold transition-all duration-150 flex items-center justify-center gap-1.5 shadow-md hover:shadow-lg active:scale-95 shrink-0"
+                >
+                  <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+                  Comunicar Ocorrência
+                </button>
+              ` : `
+                <div class="text-xs text-amber-700 bg-amber-50 px-3.5 py-2.5 rounded-xl border border-amber-100 font-semibold text-center select-none shrink-0 flex items-center gap-1.5 justify-center">
+                  <i data-lucide="wrench" class="w-4 h-4"></i>
+                  Menu de Comando Técnico TI
+                </div>
+              `}
+            </div>
+
+            <!-- Filters Grid Row -->
+            <div class="flex flex-wrap items-center gap-3 pt-3 border-t border-slate-100 text-xs">
+              <div class="flex items-center gap-1 text-slate-400 font-semibold uppercase tracking-wider text-[10px] select-none">
+                <i data-lucide="sliders-horizontal" class="w-3 h-3"></i>
+                <span>Filtros:</span>
+              </div>
+
+              <!-- Status Switch filters -->
+              <div class="flex flex-wrap rounded-lg bg-slate-50 border border-slate-200/50 p-0.5">
+                <button
+                  type="button"
+                  onclick="window.handleFilterChange('status', 'all')"
+                  class="px-2.5 py-1 text-[11px] rounded-md font-bold transition-all ${
+                    state.statusFilter === 'all' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-950'
+                  }"
+                >
+                  Todos (${totalCount})
+                </button>
+                <button
+                  type="button"
+                  onclick="window.handleFilterChange('status', 'pending')"
+                  class="px-2.5 py-1 text-[11px] rounded-md font-bold transition-all ${
+                    state.statusFilter === 'pending' ? 'bg-amber-600 text-white shadow-sm' : 'text-slate-500 hover:text-amber-600'
+                  }"
+                >
+                  Pendentes (${pendingCount})
+                </button>
+                <button
+                  type="button"
+                  onclick="window.handleFilterChange('status', 'in_progress')"
+                  class="px-2.5 py-1 text-[11px] rounded-md font-bold transition-all ${
+                    state.statusFilter === 'in_progress' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-500 hover:text-indigo-600'
+                  }"
+                >
+                  A Resolver (${processCount})
+                </button>
+                <button
+                  type="button"
+                  onclick="window.handleFilterChange('status', 'resolved')"
+                  class="px-2.5 py-1 text-[11px] rounded-md font-bold transition-all ${
+                    state.statusFilter === 'resolved' ? 'bg-emerald-600 text-white shadow-sm' : 'text-slate-500 hover:text-emerald-700'
+                  }"
+                >
+                  Resolvidos (${solvedCount})
+                </button>
+              </div>
+
+              <!-- Scope Toggle (Mine vs All) -->
+              ${state.session.role !== 'technician' ? `
+                <div class="flex rounded-lg bg-slate-50 border border-slate-200/50 p-0.5">
+                  <button
+                    type="button"
+                    onclick="window.handleFilterChange('scope', 'all')"
+                    class="px-2.5 py-1 text-[11px] rounded-md font-bold transition-all ${
+                      state.scopeFilter === 'all' ? 'bg-slate-900 text-white shadow-sm' : 'text-slate-500 hover:text-slate-900'
+                    }"
+                  >
+                    Toda a Escola
+                  </button>
+                  <button
+                    type="button"
+                    onclick="window.handleFilterChange('scope', 'me')"
+                    class="px-2.5 py-1 text-[11px] rounded-md font-bold transition-all ${
+                      state.scopeFilter === 'me' ? 'bg-indigo-600 text-white shadow-sm' : 'text-slate-400 hover:text-indigo-600'
+                    }"
+                  >
+                    Meus Reportes (${userCountMe})
+                  </button>
+                </div>
+              ` : ''}
+
+              <!-- Select School unit dropdown filter -->
+              <div class="flex items-center gap-1.5 ml-auto sm:ml-0 md:ml-auto select-none">
+                <span class="text-slate-400 font-semibold whitespace-nowrap text-[11px]">Unidade:</span>
+                <select
+                  onchange="window.handleFilterChange('school', this.value)"
+                  class="bg-slate-50 border border-slate-200 text-slate-700 px-2 py-1.5 rounded-lg text-[11px] pr-6 font-bold focus:bg-white focus:outline-none cursor-pointer"
+                >
+                  <option value="all" ${state.schoolFilter === 'all' ? 'selected' : ''}>Todas</option>
+                  ${SCHOOLS.map(sc => `<option value="${sc.id}" ${state.schoolFilter === sc.id ? 'selected' : ''}>${sc.shortName}</option>`).join('')}
+                </select>
+              </div>
+
+              <!-- Select Category dropdown filter -->
+              <div class="flex items-center gap-1.5 select-none">
+                <span class="text-slate-400 font-semibold whitespace-nowrap text-[11px]">Categoria:</span>
+                <select
+                  onchange="window.handleFilterChange('category', this.value)"
+                  class="bg-slate-50 border border-slate-200 text-slate-700 px-2 py-1.5 rounded-lg text-[11px] pr-6 font-bold focus:bg-white focus:outline-none cursor-pointer"
+                >
+                  <option value="all" id="cat-filter-opt-all" ${state.categoryFilter === 'all' ? 'selected' : ''}>Todas</option>
+                  ${CATEGORIES.map(cat => `<option value="${cat.value}" id="cat-filter-opt-${cat.value}" ${state.categoryFilter === cat.value ? 'selected' : ''}>${cat.label}</option>`).join('')}
+                </select>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // ==========================================
+      // COMPONENT 6: TICKETS CARDS RENDER GRID
+      // ==========================================
+      function renderTicketsList() {
+        const filtered = state.tickets.filter(t => {
+          const text = `${t.id} ${t.title} ${t.description} ${t.location} ${t.reporterName}`.toLowerCase();
+          const matchesSearch = text.includes(state.searchQuery.toLowerCase());
+          const matchesStatus = state.statusFilter === 'all' || t.status === state.statusFilter;
+          const matchesCategory = state.categoryFilter === 'all' || t.category === state.categoryFilter;
+          const matchesScope = state.scopeFilter === 'all' || t.reportedBy === state.session.email;
+          const matchesSchool = state.schoolFilter === 'all' || t.schoolId === state.schoolFilter;
+          
+          return matchesSearch && matchesStatus && matchesCategory && matchesScope && matchesSchool;
+        });
+
+        // Sorting: high urgency pending/in_progress first, then newest
+        const sorted = filtered.sort((a, b) => {
+          const aUrgent = a.urgency === 'high' && a.status !== 'resolved';
+          const bUrgent = b.urgency === 'high' && b.status !== 'resolved';
+          if (aUrgent && !bUrgent) return -1;
+          if (!aUrgent && bUrgent) return 1;
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        });
+
+        if (sorted.length === 0) {
+          return `
+            <div class="space-y-3.5">
+              <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 select-none">
+                <span>Lista de Chamados (0)</span>
+                <span>Ordenado por Urgência</span>
+              </div>
+              <div class="bg-white rounded-2xl border border-slate-100 p-12 text-center text-slate-400 shadow-sm max-w-sm mx-auto">
+                <div class="p-4 bg-slate-50 text-slate-300 w-fit rounded-full mx-auto mb-3">
+                  <i data-lucide="help-circle" class="w-9 h-9 stroke-[1.2]"></i>
+                </div>
+                <h3 class="font-bold text-slate-800 text-xs sm:text-sm">Nenhum chamado corresponde aos filtros</h3>
+                <p class="text-xs text-slate-500 mt-1 max-w-xs mx-auto">
+                  Tente alterar ou limpar a sua barra de pesquisa ou os filtros de tipo no topo.
+                </p>
+              </div>
+            </div>
+          `;
+        }
+
+        return `
+          <div class="space-y-3.5">
+            <div class="flex items-center justify-between text-xs font-bold text-slate-400 uppercase tracking-widest pl-1 select-none">
+              <span>Lista de Chamadas (${sorted.length})</span>
+              <span>Ordenado por Urgência</span>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+              ${sorted.map(ticket => renderTicketCardElement(ticket)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      function renderTicketCardElement(ticket) {
+        const catInfo = CATEGORIES.find(cat => cat.value === ticket.category) || {
+          label: ticket.category,
+          iconName: 'help-circle',
+          color: 'text-slate-500',
+          bgColor: 'bg-slate-50',
+          borderColor: 'border-slate-100'
+        };
+
+        const isOwner = ticket.reportedBy === state.session.email;
+        const isTech = state.session.role === 'technician';
+        const isExp = !!state.expandedTickets[ticket.id];
+        const isNotesFormOpen = !!state.showNotesForm[ticket.id];
+        const activeNotesVal = state.techNotesForm[ticket.id] || '';
+
+        // Formatted Date
+        let dateStr = ticket.createdAt;
+        try {
+          const date = new Date(ticket.createdAt);
+          dateStr = date.toLocaleString('pt-PT', {
+            day: '2-digit',
+            month: '2-digit',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+        } catch {}
+
+        const schoolObj = SCHOOLS.find(s => s.id === ticket.schoolId);
+        const schoolLabel = schoolObj ? schoolObj.shortName : 'Escola';
+
+        return `
+          <div
+            id="ticket-card-${ticket.id}"
+            class="bg-white rounded-2xl border transition-all duration-200 shadow-sm hover:shadow-md hover:border-slate-200 overflow-hidden flex flex-col justify-between ${
+              ticket.urgency === 'high' && ticket.status !== 'resolved'
+                ? 'border-l-4 border-l-rose-500 border-slate-200/95 shadow-rose-100/30'
+                : 'border-l-4 border-l-indigo-500 border-slate-100'
+            }"
+          >
+            <div class="p-5 space-y-4">
+              <!-- Card Header Info -->
+              <div class="flex flex-wrap items-start justify-between gap-3">
+                <div class="flex items-center gap-3">
+                  <div class="p-2.5 rounded-xl ${catInfo.bgColor} ${catInfo.color} border ${catInfo.borderColor}">
+                    <i data-lucide="${catInfo.iconName}" class="w-5 h-5 shrink-0"></i>
+                  </div>
+                  <div>
+                    <div class="flex items-center flex-wrap gap-1 text-[11px] select-none">
+                      <span class="font-mono text-slate-400 font-bold whitespace-nowrap">${ticket.id}</span>
+                      <span class="inline-block w-1 h-1 rounded-full bg-slate-300"></span>
+                      <span class="text-[10px] font-bold text-indigo-700 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded-full whitespace-nowrap">${schoolLabel}</span>
+                      <span class="inline-block w-1 h-1 rounded-full bg-slate-300"></span>
+                      <span class="text-slate-600 font-bold whitespace-nowrap">${ticket.location}</span>
+                    </div>
+                    <h3 class="text-sm font-bold text-slate-950 mt-1 capitalize leading-snug">${ticket.title}</h3>
+                  </div>
+                </div>
+
+                <div class="flex items-center gap-1.5 select-none">
+                  <!-- Status Badge -->
+                  <span id="badge-status-${ticket.id}" class="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                    ticket.status === 'pending' ? 'bg-amber-50 text-amber-700 border border-amber-200/60' :
+                    ticket.status === 'in_progress' ? 'bg-indigo-50 text-indigo-700 border border-indigo-200/60' :
+                    'bg-emerald-50 text-emerald-700 border border-emerald-200/60'
+                  }">
+                    ${ticket.status === 'pending' ? 'Pendente' : ticket.status === 'in_progress' ? 'A Resolver' : 'Resolvido'}
+                  </span>
+
+                  <!-- Urgency Badge -->
+                  ${ticket.status !== 'resolved' ? `
+                    <span id="badge-urgency-${ticket.id}" class="inline-flex items-center gap-0.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                      ticket.urgency === 'high' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-slate-50 text-slate-500 border border-slate-100'
+                    }">
+                      ${ticket.urgency === 'high' ? 'Crítico ⚡' : 'Normal'}
+                    </span>
+                  ` : ''}
+                </div>
+              </div>
+
+              <!-- Description Body -->
+              <div class="text-xs text-slate-600 leading-relaxed bg-slate-50/50 p-3 rounded-xl border border-slate-50">
+                <p class="${isExp ? '' : 'line-clamp-2'}">${ticket.description}</p>
+                ${ticket.description.length > 110 ? `
+                  <button
+                    onclick="window.handleToggleExpanded('${ticket.id}')"
+                    class="text-[11px] font-bold text-indigo-600 mt-1 hover:text-indigo-800 transition-colors flex items-center gap-0.5"
+                  >
+                    ${isExp ? 'Contrair descrição ⌃' : 'Continuar a ler descrição ⌵'}
+                  </button>
+                ` : ''}
+              </div>
+
+              <!-- Metadata Reporter details -->
+              <div class="flex flex-wrap items-center justify-between gap-2 text-xs text-slate-400 border-t border-slate-50 pt-3 select-none">
+                <div class="flex items-center gap-2">
+                  <i data-lucide="user" class="w-3.5 h-3.5"></i>
+                  <span class="font-medium text-slate-700">${ticket.reporterName}</span>
+                  <span class="px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wide ${
+                    ticket.reportedRole === 'teacher' ? 'bg-blue-50 text-blue-700 border border-blue-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                  }">${ticket.reportedRole === 'teacher' ? 'Docente' : 'Aluno'}</span>
+                </div>
+
+                <div class="flex items-center gap-1 font-mono text-[11px]">
+                  <i data-lucide="calendar" class="w-3 h-3"></i>
+                  <span>${dateStr}</span>
+                </div>
+              </div>
+
+              <!-- Tech Notes display if added -->
+              ${ticket.technicalNotes ? `
+                <div class="bg-indigo-50/20 border border-indigo-100/50 rounded-xl p-3 text-xs leading-normal mt-2">
+                  <div class="flex items-center gap-1.5 font-bold mb-1 text-indigo-950">
+                    <i data-lucide="wrench" class="w-3.5 h-3.5 text-indigo-600"></i>
+                    <span>Relatório de Assistência:</span>
+                    ${ticket.assignedTo ? `<span class="font-normal text-slate-400 text-[10px]">(${ticket.assignedTo})</span>` : ''}
+                  </div>
+                  <p class="italic text-slate-600 font-medium">"${ticket.technicalNotes}"</p>
+                </div>
+              ` : ''}
+
+              <!-- Dynamic Card Actions -->
+              <div class="flex flex-wrap items-center justify-end gap-2 pt-1 border-t border-slate-50/50">
+                <!-- User can withdraw pending ticket -->
+                ${isOwner && ticket.status === 'pending' ? `
+                  <button
+                    type="button"
+                    onclick="window.handleCancelClick('${ticket.id}')"
+                    class="flex items-center gap-1 px-3 py-1.5 rounded-lg text-rose-600 hover:bg-rose-50 border border-transparent hover:border-rose-100 text-xs font-bold transition-all ml-auto"
+                  >
+                    <i data-lucide="trash-2" class="w-3.5 h-3.5"></i>
+                    Retirar Assistência
+                  </button>
+                ` : ''}
+
+                <!-- Technician Claim & Resolve controls -->
+                ${isTech ? `
+                  <div class="flex items-center gap-2 w-full sm:w-auto sm:ml-auto">
+                    ${ticket.status === 'pending' ? `
+                      <button
+                        type="button"
+                        onclick="window.handleClaim('${ticket.id}')"
+                        class="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-1.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+                      >
+                        <i data-lucide="wrench" class="w-3.5 h-3.5"></i>
+                        Iniciar Assistência
+                      </button>
+                    ` : ''}
+
+                    ${ticket.status === 'in_progress' && !isNotesFormOpen ? `
+                      <button
+                        type="button"
+                        onclick="window.handleResolveSubmitTrigger('${ticket.id}', true)"
+                        class="w-full sm:w-auto flex items-center justify-center gap-1 px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-bold transition-colors shadow-sm"
+                      >
+                        <i data-lucide="check-square" class="w-3.5 h-3.5"></i>
+                        Concluir Reparação
+                      </button>
+                    ` : ''}
+                  </div>
+                ` : ''}
+              </div>
+
+              <!-- Interventions technical note inputs (only in progress for tech) -->
+              ${isTech && isNotesFormOpen ? `
+                <div class="space-y-2 border-t border-slate-100 pt-3 animate-fade-in">
+                  <label for="tech-notes-${ticket.id}" class="block text-[11px] font-bold text-slate-700">
+                    Relatório Técnico da Intervencão Escolar:
+                  </label>
+                  <textarea
+                    id="tech-notes-${ticket.id}"
+                    rows="2"
+                    placeholder="Instalação de cabos HDMI, limpeza de filtros, substituição de fusível..."
+                    oninput="window.handleTechNotesInput('${ticket.id}', this.value)"
+                    class="block w-full text-xs p-2 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-1 focus:ring-emerald-500 focus:border-emerald-500 rounded-xl outline-none"
+                  >${activeNotesVal}</textarea>
+                  <div class="flex justify-end gap-1.5">
+                    <button
+                      type="button"
+                      onclick="window.handleResolveSubmitTrigger('${ticket.id}', false)"
+                      class="px-2.5 py-1.5 rounded-lg border border-slate-200 text-slate-500 hover:bg-slate-50 text-[10px] font-bold"
+                    >
+                      Cancelar
+                    </button>
+                    <button
+                      type="button"
+                      onclick="window.handleResolveConfirm('${ticket.id}')"
+                      class="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[10px] font-bold flex items-center gap-1"
+                    >
+                      <i data-lucide="check-circle" class="w-3 h-3"></i>
+                      Gravar e Resolver
+                    </button>
+                  </div>
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }
+
+      // ==========================================
+      // COMPONENT 7: TIMELINE OF HISTORICAL ACTIONS
+      // ==========================================
+      function renderActivityTimeline() {
+        return `
+          <div class="bg-slate-900 text-white rounded-2xl p-5 border border-slate-800 shadow-xl overflow-hidden">
+            <div class="flex items-center gap-2 border-b border-slate-800 pb-3 mb-4 select-none">
+              <i data-lucide="activity" class="text-indigo-400 stroke-[2] w-4 h-4"></i>
+              <h3 class="text-xs font-bold uppercase tracking-wider">
+                Circuito Interno (Logs)
+              </h3>
+            </div>
+
+            <div class="flow-root font-sans">
+              <ul class="-mb-8 max-h-[460px] overflow-y-auto pr-1 customize-scrollbar">
+                ${state.activityLogs.map((log, index) => {
+                  let timeStr = log.timestamp;
+                  try {
+                    const date = new Date(log.timestamp);
+                    timeStr = date.toLocaleTimeString('pt-PT', { hour: '2-digit', minute: '2-digit' });
+                  } catch {}
+
+                  const isLast = index === state.activityLogs.length - 1;
+                  const profileIcon = log.role === 'technician' ? '🛠️' : log.role === 'teacher' ? '👨‍🏫' : '🎒';
+                  const logBadgeClass = log.role === 'technician' ? 'bg-amber-950 text-amber-400 border border-amber-800/60' :
+                                      log.role === 'teacher' ? 'bg-blue-950 text-blue-400 border border-blue-900/60' :
+                                      'bg-emerald-950 text-emerald-400 border border-emerald-900/60';
+
+                  return `
+                    <li class="relative pb-5">
+                      ${!isLast ? `<span class="absolute top-4 left-4 -ml-px h-full w-0.5 bg-slate-800" aria-hidden="true"></span>` : ''}
+                      <div class="relative flex space-x-3 items-start">
+                        <div>
+                          <span class="h-8 w-8 rounded-lg flex items-center justify-center text-xs ring-4 ring-slate-900 ${logBadgeClass}">
+                            ${profileIcon}
+                          </span>
+                        </div>
+                        <div class="flex-1 min-w-0 pt-0.5">
+                          <p class="text-[11px] font-medium text-slate-100 leading-normal">
+                            <strong>${log.user}</strong> <span class="text-slate-400">${log.action}</span>
+                          </p>
+                          <p class="text-[10px] text-indigo-300 font-semibold truncate hover:text-indigo-200 font-mono mt-0.5" title="${log.ticketTitle}">
+                            ${log.ticketId} — ${log.ticketTitle}
+                          </p>
+                          <p class="text-[9px] text-slate-500 font-bold font-mono mt-0.5">${timeStr}</p>
+                        </div>
+                      </div>
+                    </li>
+                  `;
+                }).join('')}
+              </ul>
+            </div>
+
+            ${state.activityLogs.length === 0 ? `
+              <p class="text-xs text-slate-500 text-center py-4 italic select-none">Sem registos de atividade.</p>
+            ` : ''}
+          </div>
+        `;
+      }
+
+      function renderSystemInfoBox() {
+        return `
+          <div class="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm leading-relaxed text-xs text-slate-500">
+            <h4 class="font-bold text-slate-800 flex items-center gap-1.5 mb-2.5 select-none">
+              <i data-lucide="sliders-horizontal" class="w-4 h-4 text-indigo-600"></i>
+              Regulação Institucional
+            </h4>
+            <p class="text-[11px] mb-2">
+              Acesso exclusivo em conformidade com as diretivas do agrupamento. O sistema divide permissões através de sufixos de email:
+            </p>
+            <ul class="space-y-1 text-[11px] list-disc list-inside text-slate-600 pl-1 select-none">
+              <li><strong class="text-indigo-700">@ecarnaxide.pt</strong>: Professores e Assistentes (Acesso Geral + Sinal Urgente Aula)</li>
+              <li><strong class="text-emerald-700">@aluno.ecarnaxide.pt</strong>: Alunos (Avisos de espaços coletivos)</li>
+              <li><strong class="text-amber-700">tecnico. / tecnico@</strong>: Equipa TI (Controlo de trabalhos, Notas e Conclusão)</li>
+            </ul>
+          </div>
+        `;
+      }
+
+      // ==========================================
+      // COMPONENT 8: FORM OVERLAY (TICKET REPORT)
+      // ==========================================
+      function renderNewTicketForm() {
+        const isTeacher = state.session.role === 'teacher';
+        
+        return `
+          <div class="bg-white rounded-2xl border border-slate-100 shadow-xl overflow-hidden font-sans max-w-3xl mx-auto w-full animate-slide-in">
+            <!-- Header Grid -->
+            <div class="bg-slate-900 px-6 py-5 text-white flex items-center justify-between select-none border-b border-slate-800">
+              <div>
+                <h2 class="text-sm sm:text-base font-bold flex items-center gap-2">
+                  <i data-lucide="sparkles" class="text-indigo-400 w-4.5 h-4.5"></i>
+                  Comunicar Nova Ocorrência / Avaria
+                </h2>
+                <p class="text-[11px] text-slate-400 mt-1">
+                  Emitido por ${state.session.name} (${state.session.role === 'teacher' ? 'Docente' : 'Aluno'})
+                </p>
+              </div>
+              <button
+                type="button"
+                onclick="window.handleFormCancel()"
+                class="text-xs font-semibold text-slate-400 hover:text-white px-3 py-1.5 rounded-lg hover:bg-white/10 transition-colors"
+              >
+                Cancelar
+              </button>
+            </div>
+
+            <div class="p-6">
+              <!-- Presets Slider panel -->
+              <div class="mb-6 bg-slate-50 p-4 rounded-xl border border-slate-200/60">
+                <div class="flex items-center gap-1.5 mb-2.5 select-none">
+                  <i data-lucide="sparkles" class="text-indigo-600 w-3.5 h-3.5"></i>
+                  <h4 class="text-[10px] sm:text-xs font-bold text-slate-800 uppercase tracking-wider">Preenchimento Ultra-Rápido (Presets escolares):</h4>
+                </div>
+                <div class="flex flex-wrap gap-2">
+                  ${FAULT_PRESETS.map(preset => `
+                    <button
+                      type="button"
+                      onclick="window.handleApplyPreset('${preset.id}')"
+                      class="text-[11px] bg-white hover:bg-indigo-50 text-slate-700 hover:text-indigo-950 border border-slate-200 hover:border-indigo-200 px-2.5 py-1.5 rounded-xl transition-all shadow-sm text-left font-medium"
+                    >
+                      ${preset.title}
+                    </button>
+                  `).join('')}
+                </div>
+              </div>
+
+              <!-- Error Box if validation fails -->
+              ${state.form.errorStatus ? `
+                <div class="mb-5 rounded-xl bg-rose-50 p-4 border border-rose-100 text-sm font-semibold text-rose-800 flex items-center gap-2 animate-shake">
+                  <i data-lucide="alert-circle" class="text-rose-500 shrink-0 w-[18px] h-[18px]"></i>
+                  <span>${state.form.errorStatus}</span>
+                </div>
+              ` : ''}
+
+              <!-- FORM ELEMENTS -->
+              <form onsubmit="window.handleFormSubmit(event)" class="space-y-5">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <!-- field 1: school selector -->
+                  <div>
+                    <label for="school-select" class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">1. Escola do Agrupamento</label>
+                    <div class="mt-1.5 relative rounded-lg shadow-sm">
+                      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i data-lucide="school" class="w-4 h-4"></i>
+                      </div>
+                      <select
+                        id="school-select"
+                        required
+                        onchange="window.handleFormSchoolSelect(this.value)"
+                        class="block w-full pl-9 pr-8 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl text-slate-900 text-sm font-semibold outline-none transition-all cursor-pointer"
+                      >
+                        ${SCHOOLS.map(sc => `<option value="${sc.id}" ${state.form.schoolId === sc.id ? 'selected' : ''}>${sc.shortName}</option>`).join('')}
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- field 2: school room location selector -->
+                  <div>
+                    <label for="space-select" class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">2. Local / Sala da Avaria</label>
+                    <div class="mt-1.5 relative rounded-lg shadow-sm">
+                      <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                        <i data-lucide="map-pin" class="w-4 h-4"></i>
+                      </div>
+                      <select
+                        id="space-select"
+                        required
+                        onchange="window.handleFormSpaceSelect(this.value)"
+                        class="block w-full pl-9 pr-af py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl text-slate-900 text-sm font-semibold outline-none transition-all cursor-pointer"
+                      >
+                        <option value="">-- Escolha uma Sala / Espaço --</option>
+                        ${SCHOOL_SPACES.filter(space => {
+                          const isBasic = state.form.schoolId !== 'esc-camilo';
+                          if (isBasic) {
+                            return space.type !== 'lab' || space.id === 'sala-a10';
+                          }
+                          return true;
+                        }).map(space => `
+                          <option value="${space.name}" ${state.form.location === space.name ? 'selected' : ''}>
+                            ${space.name} (${space.block})
+                          </option>
+                        `).join('')}
+                      </select>
+                    </div>
+                  </div>
+
+                  <!-- field 3: severity rules -->
+                  <div>
+                    <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider select-none">3. Urgência do Pedido</label>
+                    ${isTeacher ? `
+                      <div class="mt-1.5 grid grid-cols-2 gap-2">
+                        <button
+                          type="button"
+                          onclick="window.handleFormUrgencySelect('normal')"
+                          class="py-[9px] px-3 text-[11px] font-bold rounded-xl border transition-all ${
+                            state.form.urgency === 'normal'
+                              ? 'bg-slate-100 text-slate-900 border-slate-300 shadow-sm'
+                              : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                          }"
+                        >Regulada</button>
+                        <button
+                          type="button"
+                          onclick="window.handleFormUrgencySelect('high')"
+                          class="py-[9px] px-3 text-[11px] font-bold rounded-xl border transition-all flex items-center justify-center gap-1 ${
+                            state.form.urgency === 'high'
+                              ? 'bg-rose-50 text-rose-700 border-rose-300 ring-2 ring-rose-200'
+                              : 'bg-white text-slate-400 border-slate-200 hover:border-slate-300'
+                          }"
+                        >
+                          <i data-lucide="alert-circle" class="w-3.5 h-3.5 text-rose-500"></i>
+                          Urgente
+                        </button>
+                      </div>
+                    ` : `
+                      <div class="mt-1.5 py-2.5 px-3 bg-slate-100/70 border border-slate-200/50 rounded-xl text-slate-500 text-[10px] flex items-center gap-1.5 leading-tight select-none">
+                        <i data-lucide="alert-circle" class="w-4 h-4 text-slate-400 shrink-0"></i>
+                        <span><strong>Urgência Normal</strong> atribuída a alunos. Urgências de aula requerem docente.</span>
+                      </div>
+                    `}
+                  </div>
+                </div>
+
+                <!-- Category selection grid -->
+                <div>
+                  <label class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider mb-2 select-none">4. Tipo de Equipamento / Sistema Afetado</label>
+                  <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    ${CATEGORIES.map(category => {
+                      const isSel = state.form.category === category.value;
+                      return `
+                        <button
+                          type="button"
+                          onclick="window.handleFormCategorySelect('${category.value}')"
+                          class="p-3 text-left rounded-xl border flex flex-col justify-between transition-all ${
+                            isSel
+                              ? 'bg-indigo-50/50 border-indigo-600 text-indigo-950 ring-2 ring-indigo-100'
+                              : 'bg-white hover:bg-slate-50 border-slate-200 text-slate-700'
+                          }"
+                        >
+                          <span class="p-1.5 w-fit rounded-lg ${category.bgColor} ${category.color} border ${category.borderColor}">
+                            <i data-lucide="${category.iconName}" class="w-4 h-4"></i>
+                          </span>
+                          <span class="text-xs font-bold mt-2 leading-tight block">
+                            ${category.label}
+                          </span>
+                        </button>
+                      `;
+                    }).join('')}
+                  </div>
+                </div>
+
+                <!-- Title main short -->
+                <div>
+                  <label for="title-input" class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">5. Erro principal (Título curto)</label>
+                  <input
+                    id="title-input"
+                    required
+                    type="text"
+                    value="${state.form.title}"
+                    oninput="state.form.title = this.value"
+                    placeholder="ex: Projetor não sintoniza cabo HDMI"
+                    class="mt-1.5 block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl text-slate-900 text-sm font-semibold outline-none transition-all"
+                  />
+                </div>
+
+                <!-- Description Main detail -->
+                <div>
+                  <label for="desc-textarea" class="block text-[11px] font-bold text-slate-600 uppercase tracking-wider">6. Descrição Detalhada / Sintomas</label>
+                  <textarea
+                    id="desc-textarea"
+                    required
+                    rows="4"
+                    placeholder="Descreva exatamente o que está a acontecer para que os técnicos tragam os componentes certos. Por exemplo: o ecrã fica verde ao mexer na ficha, ou há luz vermelha de erro ativa no projetor do teto..."
+                    oninput="state.form.description = this.value"
+                    class="mt-1.5 block w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 focus:bg-white focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 rounded-xl text-slate-900 text-sm outline-none transition-all font-sans"
+                  >${state.form.description}</textarea>
+                </div>
+
+                <!-- Form actions buttons -->
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-100 select-none">
+                  <button
+                    type="button"
+                    onclick="window.handleFormCancel()"
+                    class="px-4 py-2.5 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold transition-all"
+                  >Cancelar</button>
+                  <button
+                    type="submit"
+                    id="submit-ticket-btn"
+                    class="px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all shadow-md hover:shadow-lg flex items-center gap-1.5"
+                  >
+                    Emitir Pedido de Assistência
+                    <i data-lucide="send" class="w-3.5 h-3.5"></i>
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        `;
+      }
+
+      // ==========================================
+      // COMPONENT 9: STATIC FOOTER
+      // ==========================================
+      function renderFooter() {
+        return `
+          <footer class="bg-slate-900 text-slate-400 py-6 border-t border-slate-800 shrink-0 text-center text-xs select-none">
+            <div class="max-w-7xl mx-auto px-4">
+              <p>© ${new Date().getFullYear()} ${SCHOOL_NAME} — Direção de Sistemas de Informação.</p>
+              <p class="text-[10px] text-slate-600 mt-1">Plataforma interna operada em Circuito Fechado de Assistência nas Salas e Espaços.</p>
+            </div>
+          </footer>
+        `;
+      }
+
+      // ==========================================
+      // COMPONENT 10: ACTION CONFIRMATION MODAL
+      // ==========================================
+      function renderConfirmationModal() {
+        if (!state.confirmAction) return '';
+        const isCancel = state.confirmAction.type === 'cancel';
+        const modalColorClass = isCancel ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600';
+        const buttonColorClass = isCancel 
+          ? 'bg-rose-600 hover:bg-rose-700 text-white focus:ring-rose-500' 
+          : 'bg-emerald-600 hover:bg-emerald-700 text-white focus:ring-emerald-500';
+        
+        return `
+          <div id="action-confirm-modal" class="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-fade-in">
+            <div 
+              role="dialog"
+              aria-modal="true"
+              class="bg-white rounded-2xl max-w-sm sm:max-w-md w-full border border-slate-100 shadow-2xl overflow-hidden scale-100 transition-transform duration-200" 
+              onclick="event.stopPropagation()"
+            >
+              <div class="p-6 space-y-4">
+                <div class="flex items-center gap-3">
+                  <div class="p-2.5 rounded-xl shrink-0 ${modalColorClass}">
+                    <i data-lucide="${isCancel ? 'trash-2' : 'check-circle'}" class="w-6 h-6"></i>
+                  </div>
+                  <h4 class="text-sm sm:text-base font-bold text-slate-900">
+                    ${state.confirmAction.title}
+                  </h4>
+                </div>
+                
+                <p class="text-xs text-slate-500 leading-relaxed">
+                  ${state.confirmAction.message}
+                </p>
+
+                ${!isCancel ? `
+                  <div class="bg-slate-50 border border-slate-200/50 rounded-xl p-3 mt-1 text-left">
+                    <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider block mb-1">Relatório Técnico Registado:</span>
+                    <p class="text-xs italic text-slate-600 font-medium">"${state.confirmAction.notes}"</p>
+                  </div>
+                ` : ''}
+
+                <div class="flex items-center justify-end gap-2.5 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onclick="window.handleCloseModal()"
+                    class="px-3.5 py-2 border border-slate-200 text-slate-500 hover:bg-slate-50 font-bold rounded-xl text-xs transition-colors"
+                  >
+                    Voltar
+                  </button>
+                  <button
+                    type="button"
+                    onclick="window.executeConfirmedAction()"
+                    class="px-3.5 py-2 font-bold rounded-xl text-xs transition-all shadow-sm ${buttonColorClass}"
+                  >
+                    Confirmar
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        `;
+      }
+
+      // ==========================================
+      // COMPONENT 11: POP-UP Toast Notifications
+      // ==========================================
+      function renderNotifications() {
+        const container = document.getElementById('notifications-container');
+        if (!container) return;
+
+        container.innerHTML = state.notifications.map(n => `
+          <div
+            id="toast-${n.id}"
+            class="bg-slate-900 border-l-4 border-l-indigo-500 text-white p-3.5 rounded-xl shadow-xl text-xs flex items-center justify-between gap-3 animate-slide-in pointer-events-auto"
+          >
+            <div class="flex items-center gap-3">
+              <i data-lucide="bell" class="w-4 h-4 text-indigo-400 shrink-0 animate-bounce"></i>
+              <span class="font-medium leading-normal">${n.message}</span>
+            </div>
+            <button onclick="window.dismissNotification(${n.id})" class="text-slate-400 hover:text-white font-bold px-1 text-[11px]">×</button>
+          </div>
+        `).join('');
+
+        if (typeof lucide !== 'undefined') {
+          lucide.createIcons();
+        }
+      }
+
+      // ==========================================
+      // CONTROLLER ACTIONS / EVENT BINDING HANDLERS
+      // ==========================================
+      
+      // Email authentication submission
+      window.handleLoginSubmit = function(e) {
+        e.preventDefault();
+        state.form.errorStatus = '';
+
+        const emailInp = document.getElementById('email-input');
+        const nameInp = document.getElementById('name-input');
+        
+        const emailVal = emailInp?.value?.trim() || '';
+        const nameVal = nameInp?.value?.trim() || '';
+
+        if (!emailVal) {
+          state.form.errorStatus = 'Por favor, introduza o seu email institucional.';
+          render();
+          return;
+        }
+
+        // Validate basic email layout
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(emailVal)) {
+          state.form.errorStatus = 'Introduza um endereço de email válido.';
+          render();
+          return;
+        }
+
+        // Validate domain rules
+        const isInst = DEFAULT_DOMAINS.some(domain => emailVal.toLowerCase().endsWith(`@${domain}`)) ||
+                     emailVal.toLowerCase().endsWith('.ecarnaxide.pt') ||
+                     emailVal.toLowerCase() === 'tecnico@ecarnaxide.pt';
+
+        if (!isInst) {
+          state.form.errorStatus = 'Apenas são permitidos emails sob os domínios institucionais (ex: @ecarnaxide.pt ou @aluno.ecarnaxide.pt).';
+          render();
+          return;
+        }
+
+        // Detect Role
+        let role = 'teacher';
+        const lowerEmail = emailVal.toLowerCase();
+        if (lowerEmail.startsWith('tecnico.') || lowerEmail.startsWith('suporte.') || lowerEmail === 'tecnico@ecarnaxide.pt') {
+          role = 'technician';
+        } else if (lowerEmail.endsWith('@aluno.ecarnaxide.pt')) {
+          role = 'student';
+        }
+
+        // Generate full visual custom name if empty
+        const splitted = emailVal.split('@')[0].split('.');
+        const autoName = splitted.map(part => part.charAt(0).toUpperCase() + part.slice(1)).join(' ');
+        const finalName = nameVal || autoName;
+
+        state.session = {
+          email: emailVal,
+          name: finalName,
+          role: role,
+          domain: emailVal.split('@')[1]
+        };
+
+        syncSessionState();
+        render();
+      };
+
+      // Fast Switch profile login
+      window.handleQuickLogin = function(demoEmail, demoName, demoRole) {
+        state.form.errorStatus = '';
+        state.session = {
+          email: demoEmail,
+          name: demoName,
+          role: demoRole,
+          domain: demoEmail.split('@')[1]
+        };
+        syncSessionState();
+        render();
+      };
+
+      // Log out
+      window.handleLogout = function() {
+        state.session = null;
+        state.showForm = false;
+        syncSessionState();
+        render();
+      };
+
+      // Profiles quick selector multiplier
+      window.handleDemoSwitchRole = function(newRole) {
+        if (!state.session) return;
+        let pEmail = 'tecnico@ecarnaxide.pt';
+        let pName = 'Carlos Mendes (TI)';
+
+        if (newRole === 'student') {
+          pEmail = 'tiago.ribeiro@aluno.ecarnaxide.pt';
+          pName = 'Tiago Ribeiro (10ºB)';
+        } else if (newRole === 'teacher') {
+          pEmail = 'margarida.sousa@ecarnaxide.pt';
+          pName = 'Prof.ª Margarida Sousa';
+        }
+
+        state.session = {
+          ...state.session,
+          role: newRole,
+          name: pName,
+          email: pEmail,
+          domain: pEmail.split('@')[1]
+        };
+
+        syncSessionState();
+        render();
+      };
+
+      // Toggle text expansion details on click
+      window.handleToggleExpanded = function(ticketId) {
+        state.expandedTickets[ticketId] = !state.expandedTickets[ticketId];
+        render();
+      };
+
+      // Set input values dynamically for reports
+      window.handleFormSchoolSelect = function(id) {
+        state.form.schoolId = id;
+        state.form.location = '';
+        render();
+      };
+      
+      window.handleFormSpaceSelect = function(spaceName) {
+        state.form.location = spaceName;
+      };
+
+      window.handleFormUrgencySelect = function(urgency) {
+        state.form.urgency = urgency;
+        render();
+      };
+
+      window.handleFormCategorySelect = function(cat) {
+        state.form.category = cat;
+        render();
+      };
+
+      // Fast templates loader
+      window.handleApplyPreset = function(presetId) {
+        const p = FAULT_PRESETS.find(item => item.id === presetId);
+        if (!p) return;
+
+        state.form.category = p.category;
+        state.form.title = p.title;
+        state.form.description = p.description;
+        
+        if (state.session.role === 'teacher') {
+          state.form.urgency = p.urgencyDefault;
+        } else {
+          state.form.urgency = 'normal';
+        }
+        state.form.errorStatus = '';
+        render();
+      };
+
+      // Close create tickets form menu
+      window.handleFormCancel = function() {
+        state.showForm = false;
+        state.form.location = '';
+        state.form.title = '';
+        state.form.description = '';
+        state.form.errorStatus = '';
+        render();
+      };
+
+      window.handleShowForm = function(show) {
+        state.showForm = show;
+        state.form.schoolId = 'esc-camilo';
+        state.form.location = '';
+        state.form.category = 'computer';
+        state.form.urgency = 'normal';
+        state.form.title = '';
+        state.form.description = '';
+        state.form.errorStatus = '';
+        render();
+      };
+
+      // Form validation reporting
+      window.handleFormSubmit = function(e) {
+        e.preventDefault();
+        state.form.errorStatus = '';
+
+        if (!state.form.location) {
+          state.form.errorStatus = 'Por favor, selecione onde ocorreu a avaria (Sala / Espaço).';
+          render();
+          return;
+        }
+
+        const trimmedTitle = state.form.title.trim();
+        if (!trimmedTitle || trimmedTitle.length < 5) {
+          state.form.errorStatus = 'O título do problema deve conter pelo menos 5 caracteres.';
+          render();
+          return;
+        }
+
+        const trimmedDesc = state.form.description.trim();
+        if (!trimmedDesc || trimmedDesc.length < 10) {
+          state.form.errorStatus = 'Por favor, explique o problema em maior detalhe (mínimo 10 caracteres).';
+          render();
+          return;
+        }
+
+        const newId = `TKT-${Math.floor(1000 + Math.random() * 9000)}`;
+        const nextTicket = {
+          id: newId,
+          title: trimmedTitle,
+          description: trimmedDesc,
+          location: state.form.location,
+          schoolId: state.form.schoolId,
+          category: state.form.category,
+          urgency: state.session.role === 'teacher' ? state.form.urgency : 'normal',
+          status: 'pending',
+          reportedBy: state.session.email,
+          reporterName: state.session.name,
+          reportedRole: state.session.role,
+          createdAt: new Date().toISOString(),
+          updatedAt: null,
+          assignedTo: null,
+          technicalNotes: null
+        };
+
+        state.tickets = [nextTicket, ...state.tickets];
+        syncTicketsState();
+
+        // Log actions
+        addActivityLog(newId, trimmedTitle, 'reportou nova falha', state.session.name, state.session.role);
+        
+        state.showForm = false;
+        render();
+      };
+
+      // Filters changes
+      window.handleFilterChange = function(type, value) {
+        if (type === 'status') state.statusFilter = value;
+        else if (type === 'category') state.categoryFilter = value;
+        else if (type === 'scope') state.scopeFilter = value;
+        else if (type === 'school') state.schoolFilter = value;
+        render();
+      };
+
+      window.handleSearchInput = function(val) {
+        state.searchQuery = val;
+        // Fast render only content region to guard input focus
+        const container = document.getElementById('ticket-card-TKT-2490')?.parentElement?.parentElement || document.getElementById('root');
+        // Let's do a complete render which is fine since input keeps state. To guard, we don't block
+        render();
+        // Restore focus on input
+        const sInput = document.querySelector('input[placeholder*="Pesquisar por Sala"]');
+        if (sInput) {
+          sInput.focus();
+          // Set selection to end
+          sInput.setSelectionRange(val.length, val.length);
+        }
+      };
+
+      // Claim tickets
+      window.handleClaim = function(ticketId) {
+        state.tickets = state.tickets.map(t => {
+          if (t.id === ticketId) {
+            return {
+              ...t,
+              status: 'in_progress',
+              assignedTo: `${state.session.name} (Suporte)`,
+              updatedAt: new Date().toISOString()
+            };
+          }
+          return t;
+        });
+        syncTicketsState();
+
+        const item = state.tickets.find(x => x.id === ticketId);
+        if (item) {
+          addActivityLog(ticketId, item.title, 'iniciou resolução', state.session.name, state.session.role);
+        }
+        render();
+      };
+
+      // Tech Notes buffer
+      window.handleTechNotesInput = function(ticketId, text) {
+        state.techNotesForm[ticketId] = text;
+      };
+
+      // Setup tech report triggers
+      window.handleResolveSubmitTrigger = function(ticketId, show) {
+        state.showNotesForm[ticketId] = show;
+        if (show) {
+          state.techNotesForm[ticketId] = '';
+        }
+        render();
+      };
+
+      // Confirmation modals trigger: RESOLVE
+      window.handleResolveConfirm = function(ticketId) {
+        const notes = state.techNotesForm[ticketId]?.trim() || 'Problema inspecionado e dado como concluído.';
+        const target = state.tickets.find(x => x.id === ticketId);
+        if (!target) return;
+
+        state.confirmAction = {
+          type: 'resolve',
+          ticketId: ticketId,
+          title: 'Concluir e Resolver Incidência',
+          message: 'Deseja marcar esta incidência como concluída e registar o relatório técnico? O professor/aluno será notificado da resolução.',
+          notes: notes
+        };
+        render();
+      };
+
+      // Confirmation modals trigger: CANCEL
+      window.handleCancelClick = function(ticketId) {
+        state.confirmAction = {
+          type: 'cancel',
+          ticketId: ticketId,
+          title: 'Retirar Pedido de Assistência',
+          message: 'Tem a certeza de que deseja retirar este pedido de assistência? Esta ação é irreversível.',
+          notes: ''
+        };
+        render();
+      };
+
+      // Cancel modal
+      window.handleCloseModal = function() {
+        state.confirmAction = null;
+        render();
+      };
+
+      // Execute modal confirmed actions
+      window.executeConfirmedAction = function() {
+        if (!state.confirmAction) return;
+        const ticketId = state.confirmAction.ticketId;
+        const type = state.confirmAction.type;
+        const notes = state.confirmAction.notes;
+
+        if (type === 'cancel') {
+          const item = state.tickets.find(x => x.id === ticketId);
+          state.tickets = state.tickets.filter(x => x.id !== ticketId);
+          syncTicketsState();
+
+          if (item) {
+            addActivityLog(ticketId, item.title, 'retirou/cancelou o pedido', state.session.name, state.session.role);
+          }
+        } else if (type === 'resolve') {
+          state.tickets = state.tickets.map(t => {
+            if (t.id === ticketId) {
+              return {
+                ...t,
+                status: 'resolved',
+                technicalNotes: notes,
+                updatedAt: new Date().toISOString()
+              };
+            }
+            return t;
+          });
+          syncTicketsState();
+
+          const item = state.tickets.find(x => x.id === ticketId);
+          if (item) {
+            addActivityLog(ticketId, item.title, 'marcou como Resolvido', state.session.name, state.session.role);
+          }
+          state.showNotesForm[ticketId] = false;
+        }
+
+        state.confirmAction = null;
+        render();
+      };
+
+      // Dismiss live toasts
+      window.dismissNotification = function(notifId) {
+        state.notifications = state.notifications.filter(x => x.id !== notifId);
+        renderNotifications();
+      };
+
+      // ==========================================
+      // APPLICATION STARTUP BOOTSTRAP
+      // ==========================================
+      window.addEventListener('DOMContentLoaded', () => {
+        initAppState();
+        render();
+      });
+    </script>
   </body>
 </html>
-
