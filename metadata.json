@@ -1,0 +1,6 @@
+{
+  "name": "Assistência Técnica Escolar",
+  "description": "Sistema de reporte e gestão de assistência técnica nas salas e espaços da escola, com autenticação por email institucional para alunos, professores e técnicos.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
